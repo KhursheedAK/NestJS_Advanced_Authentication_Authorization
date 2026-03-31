@@ -9,6 +9,7 @@ import { ProfileModule } from './profile/profile.module';
 import { AdminController } from './admin/admin.controller';
 import { AdminModule } from './admin/admin.module';
 import { EmailModule } from './email/email.module';
+import { VerifyModule } from './verify/verify.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { EmailModule } from './email/email.module';
     ProfileModule,
     AdminModule,
     EmailModule,
+    VerifyModule,
   ],
   controllers: [AdminController],
   providers: [],
