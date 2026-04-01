@@ -210,4 +210,104 @@ export class AuthService {
       throw new InternalServerErrorException('Login failed');
     }
   }
+
+  async forgotPassword(email: string) {
+    try {
+      // Step 1: find user by email
+      const user = await this.usersService.findByEmail(email);
+
+      // Step 2: if user not found, still return success
+      // reason: never reveal if email exists in DB
+      if (!user) {
+        return {
+          message: 'If that email exists, a reset link has been sent',
+        };
+      }
+
+      // Step 3: check if email is verified
+      if (!user.isVerified) {
+        throw new BadRequestException(
+          'Please verify your email before resetting your password',
+        );
+      }
+
+      // Step 4: generate reset token and expiry
+      const resetToken = this.generateToken();
+      const resetTokenExpiry = new Date(
+        Date.now() + 60 * 60 * 1000, // 1 hour from now
+      );
+
+      // Step 5: save token to DB
+      await this.usersService.update(user.id, {
+        resetToken,
+        resetTokenExpiry,
+      });
+
+      // Step 6: send reset email
+      await this.emailService.sendPasswordResetEmail(user.email, resetToken);
+
+      return {
+        message: 'If that email exists, a reset link has been sent',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        'Failed to process password reset request',
+      );
+    }
+  }
+
+  async verifyResetToken(token: string) {
+    try {
+      // Step 1: find user by token
+      const user = await this.usersService.findByResetToken(token);
+      if (!user) {
+        throw new BadRequestException('Invalid reset token');
+      }
+
+      // Step 2: check expiry
+      if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+        throw new BadRequestException(
+          'Reset token expired. Please request a new one.',
+        );
+      }
+
+      return { message: 'Token is valid. You can now reset your password.' };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException('Failed to verify reset token');
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    try {
+      // Step 1: find user by token
+      const user = await this.usersService.findByResetToken(token);
+      if (!user) {
+        throw new BadRequestException('Invalid reset token');
+      }
+
+      // Step 2: check expiry
+      if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+        throw new BadRequestException(
+          'Reset token expired. Please request a new one.',
+        );
+      }
+
+      // Step 3: hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, this.saltRounds);
+
+      // Step 4: update password and clear reset token
+      await this.usersService.update(user.id, {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+      });
+
+      return { message: 'Password reset successfully' };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException('Failed to reset password');
+    }
+  }
 }

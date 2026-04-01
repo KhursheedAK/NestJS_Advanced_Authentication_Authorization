@@ -95,7 +95,6 @@ export class UsersService {
   // 6 ** Delete user by id — for admin panel
   async delete(id: number): Promise<void> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const user = await this.findById(id);
 
       // delete profile picture from disk if exists
@@ -132,6 +131,17 @@ export class UsersService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Database error');
+    }
+  }
+
+  // 9 ** find user by reset token for password-reset
+  async findByResetToken(token: string): Promise<User | null> {
+    try {
+      return await this.usersRepository.findOneBy({ resetToken: token });
+    } catch {
+      throw new InternalServerErrorException(
+        'Database error while finding user',
+      );
     }
   }
 }

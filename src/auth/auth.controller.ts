@@ -61,7 +61,8 @@ export class AuthController {
     return this.authService.register(dto, file);
   }
 
-  @Post('login') //auth/login
+  //auth/login
+  @Post('login')
   @ApiOperation({ summary: 'Login and get JWT token' })
   @ApiResponse({
     status: 200,
@@ -75,6 +76,7 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  // GET verify-email/:token
   @Get('verify-email/:token')
   @ApiOperation({ summary: 'Verify email with token' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
@@ -83,6 +85,7 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
+  // POST resent-verification
   @Post('resend-verification')
   @ApiOperation({ summary: 'Resend verification email' })
   @ApiResponse({ status: 200, description: 'Verification email resent' })
@@ -92,5 +95,55 @@ export class AuthController {
   })
   async resendVerification(@Body('email') email: string) {
     return this.authService.resendVerification(email);
+  }
+
+  // POST forgot-password
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', example: 'john@example.com' },
+      },
+      required: ['email'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset email sent if account exists',
+  })
+  async forgotPassword(@Body('email') email: string) {
+    return this.authService.forgotPassword(email);
+  }
+
+  // GET reset-password/:token
+  @Get('reset-password/:token')
+  @ApiOperation({ summary: 'Verify reset token is valid' })
+  @ApiResponse({ status: 200, description: 'Token is valid' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async verifyResetToken(@Param('token') token: string) {
+    return this.authService.verifyResetToken(token);
+  }
+
+  // POST reset-password/:token
+  @Post('reset-password/:token')
+  @ApiOperation({ summary: 'Reset password using token' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        newPassword: { type: 'string', example: 'newpassword123' },
+      },
+      required: ['newPassword'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async resetPassword(
+    @Param('token') token: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    return this.authService.resetPassword(token, newPassword);
   }
 }
