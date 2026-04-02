@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -7,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { User } from 'src/users/user.entity';
 import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
+import { UpdateProfileDto } from 'src/dto/update-profile.dto';
 
 @Injectable()
 export class ProfileService {
@@ -27,29 +29,54 @@ export class ProfileService {
 
   async updateProfile(
     user: User,
-    data: Partial<User>,
+    dto: UpdateProfileDto,
     file?: Express.Multer.File,
   ) {
     try {
-      // hash password if being updated
-      if (data.password) {
-        data.password = await bcrypt.hash(data.password, 10);
+      // ← ONLY THIS BLOCK CHANGED
+      // build clean update object
+      const updateData: Partial<User> = {};
+
+      if (dto.username) updateData.username = dto.username;
+      if (dto.email) updateData.email = dto.email;
+      if (dto.profilePicture) updateData.profilePicture = dto.profilePicture;
+
+      // handle password change
+      if (dto.newPassword) {
+        if (!dto.currentPassword) {
+          throw new BadRequestException(
+            'Current password is required to set a new password',
+          );
+        }
+
+        const isValid = await bcrypt.compare(
+          dto.currentPassword,
+          user.password,
+        );
+        if (!isValid) {
+          throw new BadRequestException('Current password is incorrect');
+        }
+
+        updateData.password = await bcrypt.hash(dto.newPassword, 10);
       }
 
-      // Step 1: Build profile picture URL if new file was uploaded
+      // ← END OF CHANGED BLOCK
+
+      // Build profile picture URL if new file was uploaded
       if (file) {
         const appURI = this.configService.get<string>('APP_URL');
-        data.profilePicture = `${appURI}/uploads/${file.filename}`;
+        updateData.profilePicture = `${appURI}/uploads/${file.filename}`;
       }
 
-      // Step 2: Update user in database
-      const updatedUser = await this.usersService.update(user.id, data);
+      // Update user in database
+      const updatedUser = await this.usersService.update(user.id, updateData);
 
-      // Step 3: Return updated user without password
+      // Return updated user without password
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...result } = updatedUser;
+      const { password: _password, ...result } = updatedUser;
       return result;
     } catch (error) {
+      if (error instanceof BadRequestException) throw error;
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Failed to update profile');
     }

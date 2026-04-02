@@ -36,9 +36,9 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        username: { type: 'string', example: 'khursheed alam khan' },
-        email: { type: 'string', example: 'khursheedexample@example.com' },
-        password: { type: 'string', example: 'password123' },
+        username: { type: 'string', example: 'tester2' },
+        email: { type: 'string', example: 'tester2@tester2.com' },
+        password: { type: 'string', example: 'tester2@123' },
         profilePicture: { type: 'string', format: 'binary' }, // ← file upload field
       },
       required: ['username', 'email', 'password'],
@@ -104,7 +104,7 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        email: { type: 'string', example: 'john@example.com' },
+        email: { type: 'string', example: 'tester2@tester2.com' },
       },
       required: ['email'],
     },
@@ -133,7 +133,7 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        newPassword: { type: 'string', example: 'newpassword123' },
+        newPassword: { type: 'string', example: 'tester2@1234' },
       },
       required: ['newPassword'],
     },

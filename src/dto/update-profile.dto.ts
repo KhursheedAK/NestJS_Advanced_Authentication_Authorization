@@ -15,12 +15,6 @@ export class UpdateProfileDto {
   @IsEmail()
   email?: string;
 
-  @ApiProperty({ example: 'newpassword123', required: false, minLength: 6 })
-  @IsOptional()
-  @IsString()
-  @MinLength(6)
-  password?: string;
-
   @ApiProperty({
     example:
       'https://plus.unsplash.com/premium_photo-1681426472026-60d4bf7b69a1',
@@ -29,4 +23,15 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   profilePicture?: string;
+
+  @ApiProperty({ example: 'currentpassword123', required: false })
+  @IsOptional()
+  @IsString()
+  currentPassword?: string; // ← required when changing password
+
+  @ApiProperty({ example: 'newpassword123', required: false, minLength: 6 })
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  newPassword?: string; // ← renamed from password
 }
