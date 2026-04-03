@@ -1,3 +1,6 @@
 {
-  "js/ts.tsdk.path": "node_modules\\typescript\\lib"
+  "js/ts.validate.enabled": true,
+  "json.validate.enable": true,
+  // This helps if the "Error" is being surfaced as a hint/suggestion
+  "editor.showUnused": false
 }
