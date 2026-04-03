@@ -9,12 +9,15 @@ import { User } from './user.entity';
 import { Repository } from 'typeorm';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
+import { ActivityLogService } from 'src/activity-log/activity-log.service';
+import { ActivityActionEnum } from 'src/activity-log/activityAction.enum';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly activityLogService: ActivityLogService, // ← new
   ) {}
 
   // 1 ** Check Existing Email **
@@ -93,7 +96,7 @@ export class UsersService {
   }
 
   // 6 ** Delete user by id — for admin panel
-  async delete(id: number): Promise<void> {
+  async delete(id: number, adminId?: number): Promise<void> {
     try {
       const user = await this.findById(id);
 
@@ -106,6 +109,14 @@ export class UsersService {
       }
 
       await this.usersRepository.delete(id);
+
+      // log after deletion
+      await this.activityLogService.log(
+        ActivityActionEnum.ADMIN_DELETED_USER,
+        adminId, // ← who performed the deletion
+        undefined,
+        { deletedUserId: id, deletedUsername: user.username }, // ← metadata
+      );
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(

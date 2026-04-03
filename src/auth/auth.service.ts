@@ -15,6 +15,8 @@ import { saveFileToDisk } from '../multerConfig/multerConfig';
 import { unlink } from 'fs/promises';
 import { EmailService } from 'src/email/email.service';
 import { randomBytes } from 'crypto';
+import { ActivityLogService } from 'src/activity-log/activity-log.service';
+import { ActivityActionEnum } from 'src/activity-log/activityAction.enum';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +24,8 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-    private readonly emailService: EmailService, // ← new
+    private readonly emailService: EmailService,
+    private readonly activityLogService: ActivityLogService, // ← new
   ) {
     // inject ConfigService
   } // dependency injection
@@ -35,6 +38,7 @@ export class AuthService {
     return randomBytes(32).toString('hex');
   }
 
+  // does log USER_REGISTER
   async register(dto: RegisterDTO, file?: Express.Multer.File) {
     let savedFilename: string | undefined;
     try {
@@ -74,6 +78,12 @@ export class AuthService {
         verificationToken,
       );
 
+      // log registration
+      await this.activityLogService.log(
+        ActivityActionEnum.USER_REGISTER,
+        user.id,
+      );
+
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
       return {
@@ -91,6 +101,7 @@ export class AuthService {
     }
   }
 
+  // does log EMAIL_VERIFIED
   async verifyEmail(token: string) {
     try {
       // Step 1: find user by token
@@ -120,6 +131,12 @@ export class AuthService {
         verificationToken: null,
         verificationTokenExpiry: null,
       });
+
+      // log email verification
+      await this.activityLogService.log(
+        ActivityActionEnum.EMAIL_VERIFIED,
+        user.id,
+      );
 
       return { message: 'Email verified successfully' };
     } catch (error) {
@@ -165,17 +182,30 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDTO) {
+  // does log LOGIN_FAILED (!user, !isPasswordValid) | USER_LOGIN
+  async login(dto: LoginDTO, ipAddress?: string) {
     try {
       // Step 1: Find user by email
       const user = await this.usersService.findByEmail(dto.email);
       if (!user) {
+        // log failed login — no userId since user doesn't exist
+        await this.activityLogService.log(
+          ActivityActionEnum.LOGIN_FAILED,
+          undefined,
+          ipAddress,
+        );
         throw new UnauthorizedException('Invalid credentials');
       }
 
       // Step 2: Compare password with stored hash
       const isPasswordValid = await bcrypt.compare(dto.password, user.password);
       if (!isPasswordValid) {
+        // log failed login — we have userId this time
+        await this.activityLogService.log(
+          ActivityActionEnum.LOGIN_FAILED,
+          user.id,
+          ipAddress,
+        );
         throw new UnauthorizedException('Invalid credentials');
       }
 
@@ -195,6 +225,13 @@ export class AuthService {
 
       // Step 4: Generate and return the token
       const token = this.jwtService.sign(payload);
+
+      // log successful login
+      await this.activityLogService.log(
+        ActivityActionEnum.USER_LOGIN,
+        user.id,
+        ipAddress,
+      );
 
       return {
         access_token: token,
@@ -279,6 +316,7 @@ export class AuthService {
     }
   }
 
+  // does log PASSWORD_RESET
   async resetPassword(token: string, newPassword: string) {
     try {
       // Step 1: find user by token
@@ -303,6 +341,12 @@ export class AuthService {
         resetToken: null,
         resetTokenExpiry: null,
       });
+
+      // log password reset
+      await this.activityLogService.log(
+        ActivityActionEnum.PASSWORD_RESET,
+        user.id,
+      );
 
       return { message: 'Password reset successfully' };
     } catch (error) {

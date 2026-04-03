@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Req,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import { AuthService } from './auth.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from '../multerConfig/multerConfig';
 import { LoginDTO } from 'src/dto/login.dto';
+import type { Request } from 'express';
 
 import {
   ApiTags,
@@ -72,8 +74,9 @@ export class AuthController {
     status: 401,
     description: 'Invalid credentials or email not verified',
   })
-  async login(@Body() dto: LoginDTO) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDTO, @Req() req: Request) {
+    const ipAddress = req.ip; // ← extract IP from request
+    return this.authService.login(dto, ipAddress);
   }
 
   // GET verify-email/:token

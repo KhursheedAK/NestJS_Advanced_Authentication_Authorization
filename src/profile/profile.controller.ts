@@ -13,7 +13,6 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from '../multerConfig/multerConfig';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
-import { User } from 'src/users/user.entity';
 import {
   ApiTags,
   ApiOperation,
@@ -22,10 +21,7 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
-
-interface RequestWithUser {
-  user: User;
-}
+import type { RequestWithUser } from 'src/types/express';
 
 @ApiTags('Profile')
 @ApiBearerAuth() // ← tells Swagger this needs JWT token

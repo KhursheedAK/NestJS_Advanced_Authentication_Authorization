@@ -9,6 +9,8 @@ import { ProfileModule } from './profile/profile.module';
 import { AdminController } from './admin/admin.controller';
 import { AdminModule } from './admin/admin.module';
 import { EmailModule } from './email/email.module';
+import { ActivityLogModule } from './activity-log/activity-log.module';
+import { ActivityLog } from './activity-log/activity-log.entity';
 
 @Module({
   imports: [
@@ -24,7 +26,7 @@ import { EmailModule } from './email/email.module';
         username: config.get('DB_USER'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        entities: [User],
+        entities: [User, ActivityLog],
         autoLoadEntities: true,
         synchronize: true,
       }),
@@ -34,6 +36,7 @@ import { EmailModule } from './email/email.module';
     ProfileModule,
     AdminModule,
     EmailModule,
+    ActivityLogModule,
   ],
   controllers: [AdminController],
   providers: [],

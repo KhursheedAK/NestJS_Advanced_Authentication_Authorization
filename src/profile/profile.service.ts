@@ -9,12 +9,15 @@ import { User } from 'src/users/user.entity';
 import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
 import { UpdateProfileDto } from 'src/dto/update-profile.dto';
+import { ActivityLogService } from 'src/activity-log/activity-log.service';
+import { ActivityActionEnum } from 'src/activity-log/activityAction.enum';
 
 @Injectable()
 export class ProfileService {
   constructor(
     private readonly usersService: UsersService,
     private readonly configService: ConfigService,
+    private readonly activityLogService: ActivityLogService, // ← new
   ) {}
 
   getProfile(user: User) {
@@ -27,6 +30,7 @@ export class ProfileService {
     }
   }
 
+  // does log PROFILE_UPDATED
   async updateProfile(
     user: User,
     dto: UpdateProfileDto,
@@ -70,6 +74,12 @@ export class ProfileService {
 
       // Update user in database
       const updatedUser = await this.usersService.update(user.id, updateData);
+
+      // log profile update
+      await this.activityLogService.log(
+        ActivityActionEnum.PROFILE_UPDATED,
+        user.id,
+      );
 
       // Return updated user without password
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
