@@ -12,35 +12,35 @@ import { RoleEnum } from './role.enum';
 @Entity('users') // creates table on postgreSQL
 export class User {
   @PrimaryGeneratedColumn() // creates columns in tables
-  id: number;
+  id!: number;
 
   @Column({ unique: true, nullable: false })
-  username: string;
+  username!: string;
 
   @Column({ unique: true, nullable: false })
-  email: string;
+  email!: string;
 
   @Column({ nullable: false })
-  password: string; // bcrypt hashed
+  password!: string; // bcrypt hashed
 
   @Column({ nullable: true }) // optional
   profilePicture?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @Column({
     type: 'enum',
     enum: RoleEnum,
     default: RoleEnum.USER,
   })
-  role: RoleEnum;
+  role!: RoleEnum;
 
   @Column({ default: false })
-  isVerified: boolean;
+  isVerified!: boolean;
 
   @Column({ nullable: true, type: 'varchar' })
   verificationToken?: string | null;

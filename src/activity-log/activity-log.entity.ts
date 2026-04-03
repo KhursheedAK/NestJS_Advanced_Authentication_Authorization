@@ -9,7 +9,7 @@ import { ActivityActionEnum } from './activityAction.enum';
 @Entity('activity_logs')
 export class ActivityLog {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ nullable: true })
   userId?: number;
@@ -18,7 +18,7 @@ export class ActivityLog {
     type: 'enum',
     enum: ActivityActionEnum,
   })
-  action: ActivityActionEnum;
+  action!: ActivityActionEnum;
 
   @Column({ nullable: true })
   ipAddress?: string;
@@ -27,5 +27,5 @@ export class ActivityLog {
   metadata?: Record<string, unknown> | null; // ← new
 
   @CreateDateColumn()
-  timestamp: Date;
+  timestamp!: Date;
 }
