@@ -155,4 +155,24 @@ export class UsersService {
       );
     }
   }
+
+  // 10 ** Update 2FA settings
+  async update2FA(
+    id: number,
+    secret: string | null,
+    isEnabled: boolean,
+  ): Promise<User> {
+    try {
+      await this.usersRepository.update(id, {
+        twoFactorSecret: secret,
+        isTwoFactorEnabled: isEnabled,
+      });
+      return await this.findById(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        'Database error while updating 2FA',
+      );
+    }
+  }
 }

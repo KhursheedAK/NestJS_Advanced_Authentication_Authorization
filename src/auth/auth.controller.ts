@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { RegisterDTO } from 'src/dto/register.dto';
@@ -21,7 +22,10 @@ import {
   ApiResponse,
   ApiConsumes,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from './jwt.guard';
+import type { RequestWithUser } from 'src/types/express';
 
 @ApiTags('Auth')
 @Controller('auth') // defines the base path for auth controller. All routes start with /auth
@@ -149,4 +153,77 @@ export class AuthController {
   ) {
     return this.authService.resetPassword(token, newPassword);
   }
+
+  // 2FA Routes
+
+  /* 2fa setup */
+  @Post('2fa/setup')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Setup 2FA — generates secret and QR code' })
+  @ApiResponse({ status: 200, description: 'Returns secret and QR code' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async setup2FA(@Req() req: RequestWithUser) {
+    return this.authService.setup2FA(req.user.id);
+  }
+
+  /* 2fa enable */
+  @Post('2fa/enable')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Enable 2FA by verifying first code' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', example: '123456' },
+      },
+      required: ['code'],
+    },
+  })
+  @ApiResponse({ status: 200, description: '2FA enabled successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid code or setup not done' })
+  async enable2FA(@Req() req: RequestWithUser, @Body('code') code: string) {
+    return this.authService.enable2FA(req.user.id, code);
+  }
+
+  /* 2fa verify */
+  @Post('2fa/verify')
+  @ApiOperation({ summary: 'Verify 2FA code during login' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'number', example: 1 },
+        code: { type: 'string', example: '123456' },
+      },
+      required: ['userId', 'code'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Returns JWT token' })
+  @ApiResponse({ status: 400, description: 'Invalid 2FA code' })
+  async verify2FA(@Body('userId') userId: number, @Body('code') code: string) {
+    return this.authService.verify2FA(userId, code);
+  }
+
+  /* 2fa disable */
+  @Post('2fa/disable')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Disable 2FA' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', example: '123456' },
+      },
+      required: ['code'],
+    },
+  })
+  @ApiResponse({ status: 200, description: '2FA disabled successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid code or 2FA not enabled' })
+  async disable2FA(@Req() req: RequestWithUser, @Body('code') code: string) {
+    return this.authService.disable2FA(req.user.id, code);
+  }
+  // End of 2fa routes
 }

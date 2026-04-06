@@ -26,12 +26,6 @@ export class User {
   @Column({ nullable: true }) // optional
   profilePicture?: string;
 
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
-
   @Column({
     type: 'enum',
     enum: RoleEnum,
@@ -53,4 +47,16 @@ export class User {
 
   @Column({ nullable: true, type: 'timestamp' })
   resetTokenExpiry?: Date | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  twoFactorSecret?: string | null; // ← new
+
+  @Column({ default: false })
+  isTwoFactorEnabled!: boolean; // ← new
+
+  @CreateDateColumn()
+  createdAt!: Date;
+
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }

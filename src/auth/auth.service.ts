@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
@@ -17,7 +18,8 @@ import { EmailService } from 'src/email/email.service';
 import { randomBytes } from 'crypto';
 import { ActivityLogService } from 'src/activity-log/activity-log.service';
 import { ActivityActionEnum } from 'src/activity-log/activityAction.enum';
-
+import { generateSecret, verify, generateURI } from 'otplib';
+import * as QRCode from 'qrcode';
 @Injectable()
 export class AuthService {
   constructor(
@@ -32,7 +34,6 @@ export class AuthService {
 
   // Hash Password of User Registering
   private saltRounds = 10;
-
   // generates a random token
   private generateToken(): string {
     return randomBytes(32).toString('hex');
@@ -216,6 +217,15 @@ export class AuthService {
         );
       }
 
+      // if 2FA enabled → don't return JWT yet
+      if (user.isTwoFactorEnabled) {
+        return {
+          requires2FA: true,
+          userId: user.id,
+          message: 'Please enter your 2FA code',
+        };
+      }
+
       // Step 3: Build the payload
       const payload = {
         email: user.email,
@@ -352,6 +362,141 @@ export class AuthService {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException('Failed to reset password');
+    }
+  }
+
+  /*
+    2FA Methods
+  */
+
+  // Method: 1
+  async setup2FA(userId: number) {
+    try {
+      const user = await this.usersService.findById(userId);
+
+      // generate secret
+      const secret = generateSecret();
+
+      // build QR code URL
+      const otpauthUrl = generateURI({
+        issuer: 'PSEB-Task',
+        label: user.email,
+        secret,
+      });
+
+      // save secret to DB (not enabled yet)
+      await this.usersService.update2FA(userId, secret, false);
+
+      // generate QR code
+      const qrCode = await QRCode.toDataURL(otpauthUrl);
+
+      return { secret, qrCode };
+    } catch (error) {
+      console.error('2FA Setup Error:', error); // ← add this
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to setup 2FA');
+    }
+  }
+
+  // Method: 2
+  async enable2FA(userId: number, code: string) {
+    try {
+      const user = await this.usersService.findById(userId);
+
+      if (!user.twoFactorSecret) {
+        throw new BadRequestException(
+          '2FA setup not initiated. Please setup first.',
+        );
+      }
+
+      if (user.isTwoFactorEnabled) {
+        throw new BadRequestException('2FA is already enabled');
+      }
+
+      const result = await verify({
+        secret: user.twoFactorSecret,
+        token: code,
+      });
+
+      if (!result.valid) {
+        throw new BadRequestException('Invalid 2FA code');
+      }
+
+      await this.usersService.update2FA(userId, user.twoFactorSecret, true);
+
+      return { message: '2FA enabled successfully' };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException('Failed to enable 2FA');
+    }
+  }
+  // Method: 3
+  async verify2FA(userId: number, code: string) {
+    try {
+      const user = await this.usersService.findById(userId);
+
+      if (!user.isTwoFactorEnabled || !user.twoFactorSecret) {
+        throw new BadRequestException('2FA is not enabled');
+      }
+
+      const result = await verify({
+        secret: user.twoFactorSecret,
+        token: code,
+      });
+
+      if (!result.valid) {
+        throw new BadRequestException('Invalid 2FA code');
+      }
+
+      // generate JWT after successful 2FA
+      const payload = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+      };
+
+      const token = this.jwtService.sign(payload);
+
+      await this.activityLogService.log(ActivityActionEnum.USER_LOGIN, user.id);
+
+      return {
+        access_token: token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          profilePicture: user.profilePicture,
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException('Failed to verify 2FA');
+    }
+  }
+  // Method: 4
+  async disable2FA(userId: number, code: string) {
+    try {
+      const user = await this.usersService.findById(userId);
+
+      if (!user.isTwoFactorEnabled || !user.twoFactorSecret) {
+        throw new BadRequestException('2FA is not enabled');
+      }
+
+      const result = await verify({
+        secret: user.twoFactorSecret,
+        token: code,
+      });
+
+      if (!result.valid) {
+        throw new BadRequestException('Invalid 2FA code');
+      }
+
+      await this.usersService.update2FA(userId, null, false);
+
+      return { message: '2FA disabled successfully' };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException('Failed to disable 2FA');
     }
   }
 }
