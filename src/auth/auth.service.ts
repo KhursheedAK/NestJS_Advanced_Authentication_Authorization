@@ -87,6 +87,12 @@ export class AuthService {
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
+      /*const {password, verificationToken: _token,
+        verificationTokenExpiry: _expiry,
+        resetToken: _resetToken,
+          resetTokenExpiry: _resetExpiry,
+          twoFactorSecret: _secret, ...result} = user 
+      */
       return {
         ...result,
         message: 'Registration successful. Please verify your email.',

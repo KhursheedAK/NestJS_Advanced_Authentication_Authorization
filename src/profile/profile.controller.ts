@@ -41,21 +41,7 @@ export class ProfileController {
   @Put()
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        username: { type: 'string', example: 'tester2' },
-        email: {
-          type: 'string',
-          example: 'tester2@tester2.com',
-        },
-        currentPassword: { type: 'string', example: 'currentpass123' },
-        newPassword: { type: 'string', example: 'newpass123' },
-        profilePicture: { type: 'string', format: 'binary' },
-      },
-    },
-  })
+  @ApiBody({ type: UpdateProfileDto })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   @ApiResponse({ status: 400, description: 'Invalid current password' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })

@@ -11,10 +11,21 @@ import { AdminModule } from './admin/admin.module';
 import { EmailModule } from './email/email.module';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 import { ActivityLog } from './activity-log/activity-log.entity';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }), // Loads .env file globally for all modules
+
+    // Global Rate Limiting
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000, // 1 minute window
+        limit: 100, // 100 requests per minute globally
+      },
+    ]),
 
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -39,6 +50,12 @@ import { ActivityLog } from './activity-log/activity-log.entity';
     ActivityLogModule,
   ],
   controllers: [AdminController],
-  providers: [],
+  providers: [
+    // apply ThrottlerGuard globally to ALL routes
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

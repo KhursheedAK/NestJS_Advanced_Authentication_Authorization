@@ -9,13 +9,6 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { RegisterDTO } from 'src/dto/register.dto';
-import { AuthService } from './auth.service';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { multerConfig } from '../multerConfig/multerConfig';
-import { LoginDTO } from 'src/dto/login.dto';
-import type { Request } from 'express';
-
 import {
   ApiTags,
   ApiOperation,
@@ -24,31 +17,33 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+
+import { RegisterDTO } from 'src/dto/register.dto';
+import { LoginDTO } from 'src/dto/login.dto';
+import { ResendVerificationDto } from 'src/dto/resend-verification.dto';
+import { ForgotPasswordDto } from 'src/dto/forgot-password.dto';
+import { ResetPasswordDto } from 'src/dto/reset-password.dto';
+import { TwoFactorCodeDto } from 'src/dto/two-factor-code.dto';
+import { Verify2FADto } from 'src/dto/verify-2fa.dto';
+import { AuthService } from './auth.service';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from '../multerConfig/multerConfig';
+import type { Request } from 'express';
 import { JwtAuthGuard } from './jwt.guard';
 import type { RequestWithUser } from 'src/types/express';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Auth')
-@Controller('auth') // defines the base path for auth controller. All routes start with /auth
+@Controller('auth')
 export class AuthController {
-  // dependency injection of AuthService
   constructor(private readonly authService: AuthService) {}
 
-  // Post Method Route to Register a New User
-  @Post('register') // defines the route. auth/register for POST Method
-  //
+  @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiConsumes('multipart/form-data') // ← tells Swagger this accepts file upload
+  @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        username: { type: 'string', example: 'tester2' },
-        email: { type: 'string', example: 'tester2@tester2.com' },
-        password: { type: 'string', example: 'tester2@123' },
-        profilePicture: { type: 'string', format: 'binary' }, // ← file upload field
-      },
-      required: ['username', 'email', 'password'],
-    },
+    type: RegisterDTO,
+    description: 'Registration data with optional profile picture',
   })
   @ApiResponse({
     status: 201,
@@ -56,19 +51,16 @@ export class AuthController {
   })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 409, description: 'Email already in use' })
-
-  // @Body() extracts the request body | And Tell Validation Pipe to check against the RegisterDTO rules | dto is the validated data
   @UseInterceptors(FileInterceptor('profilePicture', multerConfig))
   async register(
     @Body() dto: RegisterDTO,
-    @UploadedFile()
-    file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,
   ) {
     return this.authService.register(dto, file);
   }
 
-  //auth/login
   @Post('login')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Login and get JWT token' })
   @ApiResponse({
     status: 200,
@@ -79,11 +71,9 @@ export class AuthController {
     description: 'Invalid credentials or email not verified',
   })
   async login(@Body() dto: LoginDTO, @Req() req: Request) {
-    const ipAddress = req.ip; // ← extract IP from request
-    return this.authService.login(dto, ipAddress);
+    return this.authService.login(dto, req.ip);
   }
 
-  // GET verify-email/:token
   @Get('verify-email/:token')
   @ApiOperation({ summary: 'Verify email with token' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
@@ -92,7 +82,6 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
-  // POST resent-verification
   @Post('resend-verification')
   @ApiOperation({ summary: 'Resend verification email' })
   @ApiResponse({ status: 200, description: 'Verification email resent' })
@@ -100,31 +89,21 @@ export class AuthController {
     status: 400,
     description: 'Email already verified or not found',
   })
-  async resendVerification(@Body('email') email: string) {
-    return this.authService.resendVerification(email);
+  async resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerification(dto.email);
   }
 
-  // POST forgot-password
   @Post('forgot-password')
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @ApiOperation({ summary: 'Request password reset email' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        email: { type: 'string', example: 'tester2@tester2.com' },
-      },
-      required: ['email'],
-    },
-  })
   @ApiResponse({
     status: 200,
     description: 'Reset email sent if account exists',
   })
-  async forgotPassword(@Body('email') email: string) {
-    return this.authService.forgotPassword(email);
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
   }
 
-  // GET reset-password/:token
   @Get('reset-password/:token')
   @ApiOperation({ summary: 'Verify reset token is valid' })
   @ApiResponse({ status: 200, description: 'Token is valid' })
@@ -133,30 +112,17 @@ export class AuthController {
     return this.authService.verifyResetToken(token);
   }
 
-  // POST reset-password/:token
   @Post('reset-password/:token')
   @ApiOperation({ summary: 'Reset password using token' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        newPassword: { type: 'string', example: 'tester2@1234' },
-      },
-      required: ['newPassword'],
-    },
-  })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async resetPassword(
     @Param('token') token: string,
-    @Body('newPassword') newPassword: string,
+    @Body() dto: ResetPasswordDto,
   ) {
-    return this.authService.resetPassword(token, newPassword);
+    return this.authService.resetPassword(token, dto.newPassword);
   }
 
-  // 2FA Routes
-
-  /* 2fa setup */
   @Post('2fa/setup')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -167,63 +133,31 @@ export class AuthController {
     return this.authService.setup2FA(req.user.id);
   }
 
-  /* 2fa enable */
   @Post('2fa/enable')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable 2FA by verifying first code' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', example: '123456' },
-      },
-      required: ['code'],
-    },
-  })
   @ApiResponse({ status: 200, description: '2FA enabled successfully' })
   @ApiResponse({ status: 400, description: 'Invalid code or setup not done' })
-  async enable2FA(@Req() req: RequestWithUser, @Body('code') code: string) {
-    return this.authService.enable2FA(req.user.id, code);
+  async enable2FA(@Req() req: RequestWithUser, @Body() dto: TwoFactorCodeDto) {
+    return this.authService.enable2FA(req.user.id, dto.code);
   }
 
-  /* 2fa verify */
   @Post('2fa/verify')
   @ApiOperation({ summary: 'Verify 2FA code during login' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        userId: { type: 'number', example: 1 },
-        code: { type: 'string', example: '123456' },
-      },
-      required: ['userId', 'code'],
-    },
-  })
   @ApiResponse({ status: 200, description: 'Returns JWT token' })
   @ApiResponse({ status: 400, description: 'Invalid 2FA code' })
-  async verify2FA(@Body('userId') userId: number, @Body('code') code: string) {
-    return this.authService.verify2FA(userId, code);
+  async verify2FA(@Body() dto: Verify2FADto) {
+    return this.authService.verify2FA(dto.userId, dto.code);
   }
 
-  /* 2fa disable */
   @Post('2fa/disable')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disable 2FA' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', example: '123456' },
-      },
-      required: ['code'],
-    },
-  })
   @ApiResponse({ status: 200, description: '2FA disabled successfully' })
   @ApiResponse({ status: 400, description: 'Invalid code or 2FA not enabled' })
-  async disable2FA(@Req() req: RequestWithUser, @Body('code') code: string) {
-    return this.authService.disable2FA(req.user.id, code);
+  async disable2FA(@Req() req: RequestWithUser, @Body() dto: TwoFactorCodeDto) {
+    return this.authService.disable2FA(req.user.id, dto.code);
   }
-  // End of 2fa routes
 }

@@ -14,8 +14,8 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
 } from '@nestjs/swagger';
+import { GetLogsQueryDto } from '../dto/get-logs-query.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -63,17 +63,11 @@ export class AdminController {
 
   @Get('logs')
   @ApiOperation({ summary: 'Get all activity logs (admin only)' })
-  @ApiQuery({ name: 'page', required: false, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, example: 10 })
-  @ApiQuery({ name: 'userId', required: false, example: 4 })
   @ApiResponse({ status: 200, description: 'Returns paginated activity logs' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - admin only' })
-  async getLogs(
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
-    @Query('userId', new ParseIntPipe({ optional: true })) userId?: number,
-  ) {
+  async getLogs(@Query() query: GetLogsQueryDto) {
+    const { page = 1, limit = 10, userId } = query;
     if (userId) {
       return this.activityLogService.findByUserId(userId, page, limit);
     }
