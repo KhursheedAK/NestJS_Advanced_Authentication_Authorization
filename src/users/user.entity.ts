@@ -54,6 +54,12 @@ export class User {
   @Column({ default: false })
   isTwoFactorEnabled!: boolean; // ← new
 
+  @Column({ default: 0 })
+  loginAttempts!: number;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  lockUntil?: Date | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 

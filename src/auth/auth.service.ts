@@ -204,9 +204,42 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
       }
 
+      // 1.1: check if account is locked
+      if (user.lockUntil && user.lockUntil > new Date()) {
+        const minutesLeft = Math.ceil(
+          (user.lockUntil.getTime() - Date.now()) / 60000,
+        );
+        throw new UnauthorizedException(
+          `Account locked. Try again in ${minutesLeft} minute(s)`,
+        );
+      }
+
       // Step 2: Compare password with stored hash
       const isPasswordValid = await bcrypt.compare(dto.password, user.password);
       if (!isPasswordValid) {
+        // Logic for "Fresh Start":
+        // If the lock period just ended, we start counting from 1 again.
+        // If they were never locked, we just increment.
+        const isLockExpired = user.lockUntil && user.lockUntil <= new Date();
+        // increment login attempts
+        const attempts = isLockExpired ? 1 : (user.loginAttempts || 0) + 1;
+
+        if (attempts >= 5) {
+          // lock account for 15 minutes
+          await this.usersService.update(user.id, {
+            loginAttempts: attempts,
+            lockUntil: new Date(Date.now() + 15 * 60 * 1000),
+          });
+          throw new UnauthorizedException(
+            'Too many failed attempts. Account locked for 15 minutes.',
+          );
+        }
+
+        await this.usersService.update(user.id, {
+          loginAttempts: attempts,
+          lockUntil: null, // Clear the expired lock timestamp
+        });
+
         // log failed login — we have userId this time
         await this.activityLogService.log(
           ActivityActionEnum.LOGIN_FAILED,
@@ -215,6 +248,12 @@ export class AuthService {
         );
         throw new UnauthorizedException('Invalid credentials');
       }
+
+      // reset login attempts on success
+      await this.usersService.update(user.id, {
+        loginAttempts: 0,
+        lockUntil: null,
+      });
 
       // check if email is verified
       if (!user.isVerified) {
