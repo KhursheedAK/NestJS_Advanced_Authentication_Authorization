@@ -42,8 +42,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    type: RegisterDTO,
-    description: 'Registration data with optional profile picture',
+    schema: {
+      type: 'object',
+      properties: {
+        username: { type: 'string', example: 'tester2' },
+        email: { type: 'string', example: 'tester2@tester2.com' },
+        password: { type: 'string', example: 'tester2@123' },
+        profilePicture: { type: 'string', format: 'binary' },
+      },
+      required: ['username', 'email', 'password'],
+    },
   })
   @ApiResponse({
     status: 201,

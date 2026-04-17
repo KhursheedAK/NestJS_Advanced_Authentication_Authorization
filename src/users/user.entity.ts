@@ -60,6 +60,12 @@ export class User {
   @Column({ nullable: true, type: 'timestamp' })
   lockUntil?: Date | null;
 
+  @Column({ default: false })
+  isDeleted!: boolean;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  deletedAt?: Date | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 

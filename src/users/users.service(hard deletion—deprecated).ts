@@ -7,6 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { Repository } from 'typeorm';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 import { ActivityLogService } from 'src/activity-log/activity-log.service';
 import { ActivityActionEnum } from 'src/activity-log/activityAction.enum';
 
@@ -22,10 +24,7 @@ export class UsersService {
   // Check existing users against email address in the database before registering
   async findByEmail(email: string): Promise<User | null> {
     try {
-      return await this.usersRepository.findOneBy({
-        email,
-        isDeleted: false, // exclude deleted
-      });
+      return await this.usersRepository.findOneBy({ email });
     } catch {
       throw new InternalServerErrorException(
         'Database error while finding user',
@@ -58,10 +57,7 @@ export class UsersService {
   // 3 ** finding a user by the ID **
   async findById(id: number): Promise<User> {
     try {
-      const user = await this.usersRepository.findOneBy({
-        id,
-        isDeleted: false, // exclude deleted
-      });
+      const user = await this.usersRepository.findOneBy({ id });
       if (!user) {
         throw new NotFoundException('User not Found');
       }
@@ -91,9 +87,7 @@ export class UsersService {
   // 5 ** Get all users — for admin panel
   async findAll(): Promise<User[]> {
     try {
-      return await this.usersRepository.find({
-        where: { isDeleted: false }, // exclude deleted
-      });
+      return await this.usersRepository.find({});
     } catch {
       throw new InternalServerErrorException(
         'Database error while fetching users',
@@ -106,13 +100,17 @@ export class UsersService {
     try {
       const user = await this.findById(id);
 
-      // soft delete — mark as deleted instead of removing
-      await this.usersRepository.update(id, {
-        isDeleted: true,
-        deletedAt: new Date(),
-      });
+      // delete profile picture from disk if exists
+      if (user.profilePicture) {
+        const filename = user.profilePicture.split('/uploads/')[1];
+        await unlink(join(process.cwd(), 'uploads', filename)).catch(
+          () => null,
+        );
+      }
 
-      // log after soft deletion
+      await this.usersRepository.delete(id);
+
+      // log after deletion
       await this.activityLogService.log(
         ActivityActionEnum.ADMIN_DELETED_USER,
         adminId, // ← who performed the deletion
@@ -174,52 +172,6 @@ export class UsersService {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
         'Database error while updating 2FA',
-      );
-    }
-  }
-
-  // 11 ** Get all deleted users — admin only
-  async findAllDeleted(): Promise<User[]> {
-    try {
-      return await this.usersRepository.find({
-        where: { isDeleted: true },
-      });
-    } catch {
-      throw new InternalServerErrorException(
-        'Database error while fetching deleted users',
-      );
-    }
-  }
-
-  // 12 ** Restore a soft deleted user — admin only
-  async restore(id: number, adminId?: number): Promise<User> {
-    try {
-      const user = await this.usersRepository.findOneBy({
-        id,
-        isDeleted: true,
-      });
-      if (!user) {
-        throw new NotFoundException('Deleted user not found');
-      }
-
-      await this.usersRepository.update(id, {
-        isDeleted: false,
-        deletedAt: null,
-      });
-
-      // log after restoring deleted user
-      await this.activityLogService.log(
-        ActivityActionEnum.ADMIN_RESTORED_USER,
-        adminId, // ← who performed the restoration
-        undefined,
-        { restoredUserId: id, restoredUsername: user.username }, // ← metadata
-      );
-
-      return await this.findById(id);
-    } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-      throw new InternalServerErrorException(
-        'Database error while restoring user',
       );
     }
   }

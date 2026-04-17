@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -61,6 +62,7 @@ export class AdminController {
     return this.usersService.delete(id, req.user.id);
   }
 
+  // Get Logs
   @Get('logs')
   @ApiOperation({ summary: 'Get all activity logs (admin only)' })
   @ApiResponse({ status: 200, description: 'Returns paginated activity logs' })
@@ -72,5 +74,27 @@ export class AdminController {
       return this.activityLogService.findByUserId(userId, page, limit);
     }
     return this.activityLogService.findAll(page, limit);
+  }
+
+  // Get all deleted users
+  @Get('users/deleted')
+  @ApiOperation({ summary: 'Get all deleted users (admin only)' })
+  @ApiResponse({ status: 200, description: 'Returns all soft deleted users' })
+  async getDeletedUsers() {
+    return this.usersService.findAllDeleted();
+  }
+
+  // Restore a deleted user
+  @Patch('users/:id/restore')
+  @ApiOperation({ summary: 'Restore a deleted user (admin only)' })
+  @ApiResponse({ status: 200, description: 'User restored successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin only' })
+  @ApiResponse({ status: 404, description: 'Deleted user not found' })
+  async restoreUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: RequestWithUser,
+  ) {
+    return this.usersService.restore(id, req.user.id);
   }
 }
