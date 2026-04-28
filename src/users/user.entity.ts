@@ -66,6 +66,9 @@ export class User {
   @Column({ nullable: true, type: 'timestamp' })
   deletedAt?: Date | null;
 
+  @Column({ default: true })
+  isActive!: boolean; // for activate/deactivate
+
   @CreateDateColumn()
   createdAt!: Date;
 
