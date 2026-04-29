@@ -249,6 +249,13 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
       }
 
+      // check if account is active
+      if (!user.isActive) {
+        throw new UnauthorizedException(
+          'Your account has been deactivated. Please contact support.',
+        );
+      }
+
       // reset login attempts on success
       await this.usersService.update(user.id, {
         loginAttempts: 0,
