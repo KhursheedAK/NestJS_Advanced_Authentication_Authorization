@@ -108,7 +108,8 @@ export class AdminController {
   async updateRole(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRoleDto,
+    @Request() req: RequestWithUser,
   ) {
-    return this.usersService.updateRole(id, dto.role);
+    return this.usersService.updateRole(id, dto.role, req.user.id);
   }
 }

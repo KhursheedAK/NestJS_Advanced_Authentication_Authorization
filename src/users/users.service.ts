@@ -228,10 +228,22 @@ export class UsersService {
   }
 
   // 13 ** update user role — admin only
-  async updateRole(id: number, role: RoleEnum): Promise<User> {
+  async updateRole(
+    id: number,
+    role: RoleEnum,
+    adminId?: number,
+  ): Promise<User> {
     try {
       await this.findById(id);
       await this.usersRepository.update(id, { role });
+
+      await this.activityLogService.log(
+        ActivityActionEnum.ADMIN_UPDATED_ROLE,
+        adminId,
+        undefined,
+        { targetUserId: id, newRole: role },
+      );
+
       return await this.findById(id);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
