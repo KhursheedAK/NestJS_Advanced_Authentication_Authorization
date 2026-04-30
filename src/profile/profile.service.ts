@@ -21,13 +21,7 @@ export class ProfileService {
   ) {}
 
   getProfile(user: User) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...result } = user;
-      return result;
-    } catch {
-      throw new InternalServerErrorException('Failed to retrieve profile');
-    }
+    return user;
   }
 
   // does log PROFILE_UPDATED
@@ -81,10 +75,7 @@ export class ProfileService {
         user.id,
       );
 
-      // Return updated user without password
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _password, ...result } = updatedUser;
-      return result;
+      return updatedUser;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       if (error instanceof NotFoundException) throw error;

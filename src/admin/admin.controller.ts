@@ -9,6 +9,7 @@ import {
   HttpStatus,
   Query,
   Patch,
+  Body,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,6 +26,7 @@ import { UsersService } from '../users/users.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { Request } from '@nestjs/common';
 import type { RequestWithUser } from 'src/types/express';
+import { UpdateRoleDto } from 'src/dto/update-role.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -96,5 +98,17 @@ export class AdminController {
     @Request() req: RequestWithUser,
   ) {
     return this.usersService.restore(id, req.user.id);
+  }
+
+  // Update a user's Role
+  @Patch('users/:id/role')
+  @ApiOperation({ summary: 'Update user role (admin only)' })
+  @ApiResponse({ status: 200, description: 'Role updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateRole(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateRoleDto,
+  ) {
+    return this.usersService.updateRole(id, dto.role);
   }
 }

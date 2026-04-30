@@ -7,6 +7,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { RoleEnum } from './role.enum';
 
 @Entity('users') // creates table on postgreSQL
@@ -20,6 +21,7 @@ export class User {
   @Column({ unique: true, nullable: false })
   email!: string;
 
+  @Exclude()
   @Column({ nullable: false })
   password!: string; // bcrypt hashed
 
