@@ -9,6 +9,7 @@ import { User } from './user.entity';
 import { Repository } from 'typeorm';
 import { ActivityLogService } from 'src/activity-log/activity-log.service';
 import { ActivityActionEnum } from 'src/activity-log/activityAction.enum';
+import { RoleEnum } from './role.enum';
 
 @Injectable()
 export class UsersService {
@@ -226,5 +227,18 @@ export class UsersService {
     }
   }
 
+  // 13 ** update user role — admin only
+  async updateRole(id: number, role: RoleEnum): Promise<User> {
+    try {
+      await this.findById(id);
+      await this.usersRepository.update(id, { role });
+      return await this.findById(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        'Database error while updating role',
+      );
+    }
+  }
   /* End of Admin related services */
 }
