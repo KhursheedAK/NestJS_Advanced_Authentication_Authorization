@@ -88,7 +88,60 @@ export class UsersService {
     }
   }
 
-  // 5 ** Get all users — for admin panel
+  // 5 ** find user by verification token
+  async findByVerificationToken(token: string): Promise<User | null> {
+    try {
+      return await this.usersRepository.findOneBy({ verificationToken: token });
+    } catch {
+      throw new InternalServerErrorException('Database error');
+    }
+  }
+
+  // 6 ** update verification fields
+  async updateVerification(id: number, data: Partial<User>): Promise<User> {
+    try {
+      await this.usersRepository.update(id, data);
+      return await this.findById(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Database error');
+    }
+  }
+
+  // 7 ** find user by reset token for password-reset
+  async findByResetToken(token: string): Promise<User | null> {
+    try {
+      return await this.usersRepository.findOneBy({ resetToken: token });
+    } catch {
+      throw new InternalServerErrorException(
+        'Database error while finding user',
+      );
+    }
+  }
+
+  // 8 ** Update 2FA settings
+  async update2FA(
+    id: number,
+    secret: string | null,
+    isEnabled: boolean,
+  ): Promise<User> {
+    try {
+      await this.usersRepository.update(id, {
+        twoFactorSecret: secret,
+        isTwoFactorEnabled: isEnabled,
+      });
+      return await this.findById(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        'Database error while updating 2FA',
+      );
+    }
+  }
+
+  /* Admin related services */
+
+  // 9 ** Get all users — for admin panel
   async findAll(): Promise<User[]> {
     try {
       return await this.usersRepository.find({
@@ -101,7 +154,7 @@ export class UsersService {
     }
   }
 
-  // 6 ** Delete user by id — for admin panel
+  // 10 ** Delete user by id — for admin panel
   async delete(id: number, adminId?: number): Promise<void> {
     try {
       const user = await this.findById(id);
@@ -123,57 +176,6 @@ export class UsersService {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
         'Database error while deleting user',
-      );
-    }
-  }
-
-  // 7 ** find user by verification token
-  async findByVerificationToken(token: string): Promise<User | null> {
-    try {
-      return await this.usersRepository.findOneBy({ verificationToken: token });
-    } catch {
-      throw new InternalServerErrorException('Database error');
-    }
-  }
-
-  // 8 ** update verification fields
-  async updateVerification(id: number, data: Partial<User>): Promise<User> {
-    try {
-      await this.usersRepository.update(id, data);
-      return await this.findById(id);
-    } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-      throw new InternalServerErrorException('Database error');
-    }
-  }
-
-  // 9 ** find user by reset token for password-reset
-  async findByResetToken(token: string): Promise<User | null> {
-    try {
-      return await this.usersRepository.findOneBy({ resetToken: token });
-    } catch {
-      throw new InternalServerErrorException(
-        'Database error while finding user',
-      );
-    }
-  }
-
-  // 10 ** Update 2FA settings
-  async update2FA(
-    id: number,
-    secret: string | null,
-    isEnabled: boolean,
-  ): Promise<User> {
-    try {
-      await this.usersRepository.update(id, {
-        twoFactorSecret: secret,
-        isTwoFactorEnabled: isEnabled,
-      });
-      return await this.findById(id);
-    } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-      throw new InternalServerErrorException(
-        'Database error while updating 2FA',
       );
     }
   }
@@ -223,4 +225,6 @@ export class UsersService {
       );
     }
   }
+
+  /* End of Admin related services */
 }
