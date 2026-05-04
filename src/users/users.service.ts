@@ -254,10 +254,22 @@ export class UsersService {
   }
 
   // 14 ** update user status — admin only
-  async updateStatus(id: number, isActive: boolean): Promise<User> {
+  async updateStatus(
+    id: number,
+    isActive: boolean,
+    adminId?: number,
+  ): Promise<User> {
     try {
       await this.findById(id);
       await this.usersRepository.update(id, { isActive });
+
+      await this.activityLogService.log(
+        ActivityActionEnum.ADMIN_UPDATED_STATUS,
+        adminId,
+        undefined,
+        { targetUserId: id, newStatus: isActive },
+      );
+
       return await this.findById(id);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;

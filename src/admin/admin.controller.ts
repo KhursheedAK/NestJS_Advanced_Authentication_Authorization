@@ -122,7 +122,8 @@ export class AdminController {
   async updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateStatusDto,
+    @Request() req: RequestWithUser,
   ) {
-    return this.usersService.updateStatus(id, dto.isActive);
+    return this.usersService.updateStatus(id, dto.isActive, req.user.id);
   }
 }
