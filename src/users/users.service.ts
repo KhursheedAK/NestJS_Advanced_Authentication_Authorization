@@ -252,5 +252,19 @@ export class UsersService {
       );
     }
   }
+
+  // 14 ** update user status — admin only
+  async updateStatus(id: number, isActive: boolean): Promise<User> {
+    try {
+      await this.findById(id);
+      await this.usersRepository.update(id, { isActive });
+      return await this.findById(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        'Database error while updating status',
+      );
+    }
+  }
   /* End of Admin related services */
 }
