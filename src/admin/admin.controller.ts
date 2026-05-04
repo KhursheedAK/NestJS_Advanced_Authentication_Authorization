@@ -27,6 +27,7 @@ import { ActivityLogService } from '../activity-log/activity-log.service';
 import { Request } from '@nestjs/common';
 import type { RequestWithUser } from 'src/types/express';
 import { UpdateRoleDto } from 'src/dto/update-role.dto';
+import { UpdateStatusDto } from 'src/dto/update-status.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -111,5 +112,17 @@ export class AdminController {
     @Request() req: RequestWithUser,
   ) {
     return this.usersService.updateRole(id, dto.role, req.user.id);
+  }
+
+  // Update a user's Status
+  @Patch('users/:id/status')
+  @ApiOperation({ summary: 'Activate or deactivate user (admin only)' })
+  @ApiResponse({ status: 200, description: 'Status updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateStatusDto,
+  ) {
+    return this.usersService.updateStatus(id, dto.isActive);
   }
 }
